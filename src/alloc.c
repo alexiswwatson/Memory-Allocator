@@ -57,6 +57,7 @@ free_block *find_prev(free_block *block) {
  * @return A pointer to the next neighbor or NULL if there is none
  */
 free_block *find_next(free_block *block) {
+    printf("find next\n");
     char *block_end = (char*)block + block->size + sizeof(free_block);
     free_block *curr = HEAD;
 
@@ -137,7 +138,13 @@ void *coalesce(free_block *block) {
  * @return A pointer to the allocated memory
  */
 void *do_alloc(size_t size) {
-    return NULL;
+    printf("do_alloc\n");
+    void *block_ptr = sbrk(size);
+    if (block_ptr == (void *)-1) {
+        printf("Error allocating memory with sbrk()\n");
+        return NULL; // Allocation failed
+    }
+    return block_ptr;
 }
 
 /**
@@ -147,7 +154,13 @@ void *do_alloc(size_t size) {
  * @return A pointer to the requested block of memory
  */
 void *tumalloc(size_t size) {
-    return NULL;
+    printf("tumalloc\n");
+    if (HEAD == NULL) {
+        void *block_ptr = do_alloc(size);
+        return block_ptr;
+    }
+
+    return 0;
 }
 
 /**
