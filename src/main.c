@@ -172,9 +172,9 @@ int main(int argc, char** argv) {
     // Print the first value
     printf("%d\n", *other_thing);
 
-    // // Free the allocated memory
-    // tufree(thing);
-    // tufree(other_thing);
+    // Free the allocated memory
+    tufree(thing);
+    tufree(other_thing);
 
     // // Create a new list
     // HEAD = list_new(5);

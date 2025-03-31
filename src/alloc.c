@@ -191,5 +191,12 @@ void *turealloc(void *ptr, size_t new_size) {
  * @param ptr Pointer to the allocated piece of memory
  */
 void tufree(void *ptr) {
-
+    printf("tufree\n");
+    free_block *new = ptr;
+    new->size = sizeof(ptr);
+    if (HEAD == NULL) {
+        HEAD = new;
+    } else {
+        printf("else triggered\n");
+    } 
 }
