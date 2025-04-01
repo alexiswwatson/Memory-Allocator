@@ -9,6 +9,7 @@
 #define ALIGNMENT 16 /**< The alignment of the memory blocks */
 
 static free_block *HEAD = NULL; /**< Pointer to the first element of the free list */
+static free_block *NEXT = NULL;
 
 /**
  * Split a free block into two blocks
@@ -194,9 +195,17 @@ void tufree(void *ptr) {
     printf("tufree\n");
     free_block *new = ptr;
     new->size = sizeof(ptr);
+    new->next = NULL;
     if (HEAD == NULL) {
         HEAD = new;
+    } else if (HEAD->next == NULL) {
+        HEAD->next = new;
     } else {
-        printf("else triggered\n");
+        printf("tufree else\n");
+        free_block *curr = HEAD;
+        while (curr->next != NULL) {
+            curr = curr->next;
+        }
+        curr->next = new;
     } 
 }
