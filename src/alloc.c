@@ -29,7 +29,14 @@ void *split(free_block *block, int size) {
     new_block->size = block->size - size - sizeof(free_block);
     new_block->next = block->next;
 
+    if (block == HEAD) {
+        HEAD = new_block;
+    }
+
     block->size = size;
+    block->next = new_block;
+
+    NEXT = new_block;
 
     return block;
 }
@@ -157,11 +164,62 @@ void *do_alloc(size_t size) {
 void *tumalloc(size_t size) {
     printf("tumalloc\n");
     if (HEAD == NULL) {
+        printf("head null\n");
         void *block_ptr = do_alloc(size);
+        NEXT = HEAD;
         return block_ptr;
+    } else if (HEAD->next == NULL) {
+        printf("head only\n");
+        if (size > HEAD->size) {
+            printf("size no fitty\n");
+            void *block_ptr = do_alloc(size);
+            NEXT = HEAD;
+            return block_ptr;
+        } else if (size == HEAD->size) {
+            printf("goldilocks\n");
+            void *block_ptr = HEAD;
+            HEAD = NULL;
+            NEXT = HEAD;
+            return block_ptr;
+        }
+        printf("head fitty\n");
+        free_block *new_block = split(HEAD, size);
+        remove_free_block(new_block);
+        NEXT = HEAD;
+        return (void *)new_block;
     }
-
-    return 0;
+    if (NEXT == NULL) {
+        NEXT = HEAD;
+    }
+    free_block *start = NEXT;
+    free_block *curr = NEXT;
+    printf("midware %p %p\n", HEAD, NEXT);
+    int stop = 0;
+    while (curr->next && curr->next != start && stop < 10) {
+        free_block *prev = find_prev(curr);
+        printf("while %p %p %p\n", curr, curr->next, start);
+        if (size == curr->size) {
+            printf("goldilocks\n");
+            prev->next = curr->next;
+            NEXT = curr->next;
+            return curr;
+        } else if (size < curr->size) {
+            printf("size fitty\n");
+            free_block *new_block = split(curr, size);
+            remove_free_block(new_block);
+            
+            return (void *)new_block;
+        }
+        printf("go more\n");
+        if (curr->next == NULL) {
+            curr = HEAD;
+        }
+        curr = curr->next;
+        stop++;
+    }
+    printf("last resort\n");
+    void *block_ptr = do_alloc(size);
+    return block_ptr;
 }
 
 /**

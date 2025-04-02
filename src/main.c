@@ -176,38 +176,38 @@ int main(int argc, char** argv) {
     tufree(thing);
     tufree(other_thing);
 
-    // // Create a new list
-    // HEAD = list_new(5);
+    // Create a new list
+    HEAD = list_new(5);
 
-    // // Check if the allocation was successful
-    // if(HEAD == NULL) {
-    //     printf("Failed to allocate memory\n");
-    //     return 1;
-    // }
+    // Check if the allocation was successful
+    if(HEAD == NULL) {
+        printf("Failed to allocate memory\n");
+        return 1;
+    }
 
-    // // Add some elements to the list
-    // list_add(HEAD, 10);
-    // list_add(HEAD, 20);
-    // list_add(HEAD, 30);
-    // list_add(HEAD, 40);
+    // Add some elements to the list
+    list_add(HEAD, 10);
+    list_add(HEAD, 20);
+    list_add(HEAD, 30);
+    list_add(HEAD, 40);
 
-    // // Print all elements in the list
-    // list_print_all(HEAD);
+    // Print all elements in the list
+    list_print_all(HEAD);
 
-    // // Remove an element from the list
-    // int ret = list_remove(&HEAD, 0);
+    // Remove an element from the list
+    int ret = list_remove(&HEAD, 0);
 
-    // // Check if the removal was successful
-    // if(ret != 0) {
-    //     printf("Failed to remove element\n");
-    //     return 1;
-    // }
+    // Check if the removal was successful
+    if(ret != 0) {
+        printf("Failed to remove element\n");
+        return 1;
+    }
 
-    // // Print all elements in the list
-    // list_print_all(HEAD);
+    // Print all elements in the list
+    list_print_all(HEAD);
 
-    // // Remove all elements from the list
-    // list_remove_all(HEAD);
+    // Remove all elements from the list
+    list_remove_all(HEAD);
 
     // // Allocate memory and initialize to 0
     // int *more_things = tucalloc(10, sizeof(int));
