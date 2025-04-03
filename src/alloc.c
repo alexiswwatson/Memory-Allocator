@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 
 #define ALIGNMENT 16 /**< The alignment of the memory blocks */
 
@@ -147,6 +148,13 @@ void *coalesce(free_block *block) {
  */
 void *do_alloc(size_t size) {
     printf("do_alloc\n");
+    void *ptr = sbrk(0);
+    uintptr_t ptr_addr = (uintptr_t) ptr;
+    int addr_end = ptr_addr & 0xF;
+    int align = ALIGNMENT - addr_end;
+    if (align != 16 || 0) {
+        sbrk(align);
+    }
     void *block_ptr = sbrk(size);
     if (block_ptr == (void *)-1) {
         printf("Error allocating memory with sbrk()\n");
@@ -164,25 +172,20 @@ void *do_alloc(size_t size) {
 void *tumalloc(size_t size) {
     printf("tumalloc\n");
     if (HEAD == NULL) {
-        printf("head null\n");
         void *block_ptr = do_alloc(size);
         NEXT = HEAD;
         return block_ptr;
     } else if (HEAD->next == NULL) {
-        printf("head only\n");
         if (size > HEAD->size) {
-            printf("size no fitty\n");
             void *block_ptr = do_alloc(size);
             NEXT = HEAD;
             return block_ptr;
         } else if (size == HEAD->size) {
-            printf("goldilocks\n");
             void *block_ptr = HEAD;
             HEAD = NULL;
             NEXT = HEAD;
             return block_ptr;
         }
-        printf("head fitty\n");
         free_block *new_block = split(HEAD, size);
         remove_free_block(new_block);
         NEXT = HEAD;
@@ -193,31 +196,25 @@ void *tumalloc(size_t size) {
     }
     free_block *start = NEXT;
     free_block *curr = NEXT;
-    printf("midware %p %p\n", HEAD, NEXT);
     int stop = 0;
     while (curr->next && curr->next != start && stop < 10) {
         free_block *prev = find_prev(curr);
-        printf("while %p %p %p\n", curr, curr->next, start);
         if (size == curr->size) {
-            printf("goldilocks\n");
             prev->next = curr->next;
             NEXT = curr->next;
             return curr;
         } else if (size < curr->size) {
-            printf("size fitty\n");
             free_block *new_block = split(curr, size);
             remove_free_block(new_block);
             
             return (void *)new_block;
         }
-        printf("go more\n");
         if (curr->next == NULL) {
             curr = HEAD;
         }
         curr = curr->next;
         stop++;
     }
-    printf("last resort\n");
     void *block_ptr = do_alloc(size);
     return block_ptr;
 }
@@ -259,7 +256,6 @@ void tufree(void *ptr) {
     } else if (HEAD->next == NULL) {
         HEAD->next = new;
     } else {
-        printf("tufree else\n");
         free_block *curr = HEAD;
         while (curr->next != NULL) {
             curr = curr->next;
