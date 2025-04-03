@@ -234,27 +234,23 @@ int main(int argc, char** argv) {
         printf("%d\n", more_things[i]);
     }
 
-    // // Reallocate memory
-    // int *bigger_things = turealloc(more_things, 20*sizeof(int));
+    // Reallocate memory
+    int *bigger_things = turealloc(more_things, 20*sizeof(int));
 
-    // // Check if the reallocation was successful
-    // if(bigger_things == NULL) {
-    //     printf("Failed to allocate memory\n");
-    //     return 1;
-    // }
-
-    // // Set some values in the allocated memory
-    // for(int i=10; i<20; i++) {
-    //     bigger_things[i] = i*10;
-    // }
-
-    // // Print all elements in the list
-    // for(int i=0; i<20; i++) {
-    //     printf("%d\n", bigger_things[i]);
-    // }
-
-    // // Free the allocated memory
-    // tufree(bigger_things);
-
+    // Check if the reallocation was successful
+    if(bigger_things == NULL) {
+        printf("Failed to allocate memory\n");
+        return 1;
+    }
+    // Set some values in the allocated memory
+    for(int i=10; i<20; i++) {
+        bigger_things[i] = i*10;
+    }
+    // Print all elements in the list
+    for(int i=0; i<20; i++) {
+        printf("%d\n", bigger_things[i]);
+    }
+    // Free the allocated memory
+    tufree(bigger_things);
     return 0;
 }

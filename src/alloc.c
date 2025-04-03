@@ -66,7 +66,6 @@ free_block *find_prev(free_block *block) {
  * @return A pointer to the next neighbor or NULL if there is none
  */
 free_block *find_next(free_block *block) {
-    printf("find next\n");
     char *block_end = (char*)block + block->size + sizeof(free_block);
     free_block *curr = HEAD;
 
@@ -147,7 +146,6 @@ void *coalesce(free_block *block) {
  * @return A pointer to the allocated memory
  */
 void *do_alloc(size_t size) {
-    printf("do_alloc\n");
     void *ptr = sbrk(0);
     uintptr_t ptr_addr = (uintptr_t) ptr;
     int addr_end = ptr_addr & 0xF;
@@ -170,15 +168,18 @@ void *do_alloc(size_t size) {
  * @return A pointer to the requested block of memory
  */
 void *tumalloc(size_t size) {
-    printf("tumalloc\n");
     if (HEAD == NULL) {
-        void *block_ptr = do_alloc(size);
+        header *head = do_alloc(size + sizeof(header));
         NEXT = HEAD;
+        void *block_ptr = head + sizeof(header);
+        head->size = size;
         return block_ptr;
     } else if (HEAD->next == NULL) {
         if (size > HEAD->size) {
-            void *block_ptr = do_alloc(size);
+            header *head = do_alloc(size + sizeof(header));
             NEXT = HEAD;
+            void *block_ptr = head + sizeof(header);
+            head->size = size;
             return block_ptr;
         } else if (size == HEAD->size) {
             void *block_ptr = HEAD;
@@ -186,10 +187,12 @@ void *tumalloc(size_t size) {
             NEXT = HEAD;
             return block_ptr;
         }
-        free_block *new_block = split(HEAD, size);
-        remove_free_block(new_block);
+        free_block *head = split(HEAD, size + sizeof(header));
+        remove_free_block(head);
         NEXT = HEAD;
-        return (void *)new_block;
+        void *new_block = head + sizeof(header);
+        head->size = size;
+        return new_block;
     }
     if (NEXT == NULL) {
         NEXT = HEAD;
@@ -204,10 +207,11 @@ void *tumalloc(size_t size) {
             NEXT = curr->next;
             return curr;
         } else if (size < curr->size) {
-            free_block *new_block = split(curr, size);
-            remove_free_block(new_block);
-            
-            return (void *)new_block;
+            free_block *head = split(curr, size + sizeof(header));
+            remove_free_block(head);
+            void *block_ptr = head + sizeof(header);
+            head->size = size;
+            return block_ptr;
         }
         if (curr->next == NULL) {
             curr = HEAD;
@@ -215,7 +219,9 @@ void *tumalloc(size_t size) {
         curr = curr->next;
         stop++;
     }
-    void *block_ptr = do_alloc(size);
+    header *head = do_alloc(size + sizeof(header));
+    void *block_ptr = head + sizeof(header);
+    head->size = size;
     return block_ptr;
 }
 
@@ -240,7 +246,18 @@ void *tucalloc(size_t num, size_t size) {
  * @return A new pointer containing the contents of ptr, but with the new_size
  */
 void *turealloc(void *ptr, size_t new_size) {
-    return NULL;
+    tufree(ptr);
+    header *head = tumalloc(new_size + sizeof(header));
+    size_t old_size = head->size;
+    void *block_ptr = ptr;
+    if (new_size <= old_size) {
+        printf("new\n");
+        memcpy(block_ptr, ptr, new_size);
+    } else {
+        printf("old\n");
+        memcpy(block_ptr, ptr, old_size);
+    }
+    return block_ptr;
 }
 
 /**
@@ -249,9 +266,8 @@ void *turealloc(void *ptr, size_t new_size) {
  * @param ptr Pointer to the allocated piece of memory
  */
 void tufree(void *ptr) {
-    printf("tufree\n");
-    free_block *new = ptr;
-    new->size = sizeof(ptr);
+    free_block *new = ptr - sizeof(header);
+    new->size = sizeof(ptr + sizeof(header));
     new->next = NULL;
     if (HEAD == NULL) {
         HEAD = new;
@@ -261,13 +277,15 @@ void tufree(void *ptr) {
         free_block *curr = HEAD;
         uintptr_t new_addr = (uintptr_t) new;
         uintptr_t curr_next_addr = (uintptr_t) curr->next;
-        printf("here\n");
-        while (curr->next != NULL && curr_next_addr < new_addr ) {
+        while (curr->next != NULL && curr_next_addr < new_addr) {
             curr = curr->next;
             curr_next_addr = (uintptr_t) curr;
         }
         new->next = curr->next;
         curr->next = new;
     } 
+    if (new == new->next) {
+        new->next = NULL;
+    }
     coalesce(new);
 }
