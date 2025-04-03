@@ -10,7 +10,7 @@
 #define ALIGNMENT 16 /**< The alignment of the memory blocks */
 
 static free_block *HEAD = NULL; /**< Pointer to the first element of the free list */
-static free_block *NEXT = NULL;
+static free_block *NEXT = NULL; /**< Pointer to the next element of the free list -- next-fit search */
 
 /**
  * Split a free block into two blocks
@@ -146,11 +146,15 @@ void *coalesce(free_block *block) {
  * @return A pointer to the allocated memory
  */
 void *do_alloc(size_t size) {
-    void *ptr = sbrk(0);
+    void *ptr = sbrk(0); // top of heap
     uintptr_t ptr_addr = (uintptr_t) ptr;
-    int addr_end = ptr_addr & 0xF;
+
+    int addr_end = ptr_addr & 0xF; // find last digit
     int align = ALIGNMENT - addr_end;
+
     void *block_ptr = sbrk(size + (size_t) align);
+
+    // if it fails
     if (block_ptr == (void *)-1) {
         printf("Error allocating memory with sbrk()\n");
         return NULL; // Allocation failed
@@ -165,60 +169,78 @@ void *do_alloc(size_t size) {
  * @return A pointer to the requested block of memory
  */
 void *tumalloc(size_t size) {
-    if (HEAD == NULL) {
+    if (HEAD == NULL) { // first case if no free list
         header *head = do_alloc(size + sizeof(header));
         NEXT = HEAD;
         void *block_ptr = head + sizeof(header);
         head->size = size;
         return block_ptr;
-    } else if (HEAD->next == NULL) {
-        if (size > HEAD->size) {
+    } 
+    else if (HEAD->next == NULL) { // second case if free list has only one element
+        if (size > HEAD->size) { // if requested size is too large, allocate more
             header *head = do_alloc(size + sizeof(header));
             NEXT = HEAD;
             void *block_ptr = head + sizeof(header);
             head->size = size;
             return block_ptr;
-        } else if (size == HEAD->size) {
+        } else if (size == HEAD->size) { // if requested size is a perfect fit, replace the block
             void *block_ptr = HEAD;
             HEAD = NULL;
             NEXT = HEAD;
             return block_ptr;
         }
+
         free_block *head = split(HEAD, size + sizeof(header));
-        remove_free_block(head);
-        NEXT = HEAD;
         void *new_block = head + sizeof(header);
+        
+        remove_free_block(head);
+
+        NEXT = HEAD;
         head->size = size;
+
         return new_block;
     }
-    if (NEXT == NULL) {
+
+    if (NEXT == NULL) { // next-fit pointer calibration
         NEXT = HEAD;
     }
+
     free_block *start = NEXT;
     free_block *curr = NEXT;
     int stop = 0;
-    while (curr->next && curr->next != start && stop < 10) {
+
+    while (curr->next && curr->next != start) { // make one valid loop around the free list
         free_block *prev = find_prev(curr);
-        if (size == curr->size) {
+
+        if (size == curr->size) { // easy case if perfect fit
             prev->next = curr->next;
             NEXT = curr->next;
+
             return curr;
-        } else if (size < curr->size) {
+        } else if (size < curr->size) { // if there is room to fit
             free_block *head = split(curr, size + sizeof(header));
+
             remove_free_block(head);
+
             void *block_ptr = head + sizeof(header);
+
             head->size = size;
+
             return block_ptr;
         }
-        if (curr->next == NULL) {
-            curr = HEAD;
+
+        if (curr->next == NULL) { // loop back around if end reached
+            curr->next = HEAD;
         }
+
         curr = curr->next;
-        stop++;
     }
+
     header *head = do_alloc(size + sizeof(header));
     void *block_ptr = head + sizeof(header);
+
     head->size = size;
+
     return block_ptr;
 }
 
@@ -231,7 +253,9 @@ void *tumalloc(size_t size) {
  */
 void *tucalloc(size_t num, size_t size) {
     void *block_ptr = tumalloc(num * size);
+
     memset(block_ptr, 0, num * size);
+
     return block_ptr;
 }
 
@@ -243,17 +267,18 @@ void *tucalloc(size_t num, size_t size) {
  * @return A new pointer containing the contents of ptr, but with the new_size
  */
 void *turealloc(void *ptr, size_t new_size) {
-    tufree(ptr);
+    tufree(ptr); // put the block back in the free list while keeping data stored there
+    
     header *head = tumalloc(new_size + sizeof(header));
     size_t old_size = head->size;
     void *block_ptr = ptr;
-    if (new_size <= old_size) {
-        printf("new\n");
+
+    if (new_size <= old_size) { // check to make sure the right amount of data is copied
         memcpy(block_ptr, ptr, new_size);
     } else {
-        printf("old\n");
         memcpy(block_ptr, ptr, old_size);
     }
+
     return block_ptr;
 }
 
@@ -264,25 +289,32 @@ void *turealloc(void *ptr, size_t new_size) {
  */
 void tufree(void *ptr) {
     free_block *new = ptr - sizeof(header);
+
     new->size = sizeof(ptr + sizeof(header));
     new->next = NULL;
-    if (HEAD == NULL) {
+
+    if (HEAD == NULL) { // start the free list if needed
         HEAD = new;
-    } else if (HEAD->next == NULL) {
+    } else if (HEAD->next == NULL) { // add second element to free list if needed
         HEAD->next = new;
-    } else {
+    } else { // free list is long enough
         free_block *curr = HEAD;
+
         uintptr_t new_addr = (uintptr_t) new;
         uintptr_t curr_next_addr = (uintptr_t) curr->next;
-        while (curr->next != NULL && curr_next_addr < new_addr) {
+
+        while (curr->next != NULL && curr_next_addr < new_addr) { // loop through address-ordered free list
             curr = curr->next;
             curr_next_addr = (uintptr_t) curr;
         }
+
         new->next = curr->next;
         curr->next = new;
     } 
-    if (new == new->next) {
+
+    if (new == new->next) { // in case a block wants to point to itself
         new->next = NULL;
     }
+    
     coalesce(new);
 }
