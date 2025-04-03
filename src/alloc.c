@@ -227,7 +227,9 @@ void *tumalloc(size_t size) {
  * @return A pointer to the requested block of initialized memory
  */
 void *tucalloc(size_t num, size_t size) {
-    return NULL;
+    void *block_ptr = tumalloc(num * size);
+    memset(block_ptr, 0, num * size);
+    return block_ptr;
 }
 
 /**
@@ -257,9 +259,15 @@ void tufree(void *ptr) {
         HEAD->next = new;
     } else {
         free_block *curr = HEAD;
-        while (curr->next != NULL) {
+        uintptr_t new_addr = (uintptr_t) new;
+        uintptr_t curr_next_addr = (uintptr_t) curr->next;
+        printf("here\n");
+        while (curr->next != NULL && curr_next_addr < new_addr ) {
             curr = curr->next;
+            curr_next_addr = (uintptr_t) curr;
         }
+        new->next = curr->next;
         curr->next = new;
     } 
+    coalesce(new);
 }
