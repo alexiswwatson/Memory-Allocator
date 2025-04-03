@@ -133,7 +133,6 @@ static node *HEAD = NULL;
  * Main function to test the allocator
  */
 int main(int argc, char** argv) {
-    printf("Main\n");
     // Allocate some memory
     int *thing = tumalloc(5*sizeof(int));
 

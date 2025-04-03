@@ -150,10 +150,7 @@ void *do_alloc(size_t size) {
     uintptr_t ptr_addr = (uintptr_t) ptr;
     int addr_end = ptr_addr & 0xF;
     int align = ALIGNMENT - addr_end;
-    if (align != 16 || 0) {
-        sbrk(align);
-    }
-    void *block_ptr = sbrk(size);
+    void *block_ptr = sbrk(size + (size_t) align);
     if (block_ptr == (void *)-1) {
         printf("Error allocating memory with sbrk()\n");
         return NULL; // Allocation failed
