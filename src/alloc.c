@@ -147,19 +147,31 @@ void *coalesce(free_block *block) {
  */
 void *do_alloc(size_t size) {
     void *ptr = sbrk(0); // top of heap
-    uintptr_t ptr_addr = (uintptr_t) ptr;
 
-    int addr_end = ptr_addr & 0xF; // find last digit
-    int align = ALIGNMENT - addr_end;
+    intptr_t addr_end = (intptr_t) ptr & (ALIGNMENT - 1); // find last digit
+    intptr_t align;
 
-    void *block_ptr = sbrk(size + (size_t) align);
+    if (addr_end == 0) {
+        align = 0;
+    } else {
+        align = ALIGNMENT - addr_end;
+    }
+
+    void *block_ptr = sbrk(size + sizeof(header) + (size_t) align);
 
     // if it fails
     if (block_ptr == (void *)-1) {
         printf("Error allocating memory with sbrk()\n");
         return NULL; // Allocation failed
     }
-    return block_ptr;
+
+    void *head = (void *) ((intptr_t) block_ptr + align);
+
+    header *head_data = (header *) head;
+    head_data->size = size;
+    head_data->magic = 12345;
+
+    return block_ptr + sizeof(header) + align;
 }
 
 /**
@@ -169,77 +181,34 @@ void *do_alloc(size_t size) {
  * @return A pointer to the requested block of memory
  */
 void *tumalloc(size_t size) {
-    if (HEAD == NULL) { // first case if no free list
-        header *head = do_alloc(size + sizeof(header));
-        NEXT = HEAD;
-        void *block_ptr = head + sizeof(header);
-        head->size = size;
+    if (HEAD == NULL) { // case if no free list
+        void *block_ptr = do_alloc(size);
+
         return block_ptr;
     } 
-    else if (HEAD->next == NULL) { // second case if free list has only one element
-        if (size > HEAD->size) { // if requested size is too large, allocate more
-            header *head = do_alloc(size + sizeof(header));
-            NEXT = HEAD;
-            void *block_ptr = head + sizeof(header);
-            head->size = size;
-            return block_ptr;
-        } else if (size == HEAD->size) { // if requested size is a perfect fit, replace the block
-            void *block_ptr = HEAD;
-            HEAD = NULL;
-            NEXT = HEAD;
-            return block_ptr;
-        }
 
-        free_block *head = split(HEAD, size + sizeof(header));
-        void *new_block = head + sizeof(header);
-        
-        remove_free_block(head);
-
-        NEXT = HEAD;
-        head->size = size;
-
-        return new_block;
-    }
-
-    if (NEXT == NULL) { // next-fit pointer calibration
-        NEXT = HEAD;
-    }
-
-    free_block *start = NEXT;
     free_block *curr = NEXT;
-    int stop = 0;
+    free_block *start = NEXT;
+    while (curr != NULL || start) {
+        if ((size + sizeof(header)) <= curr->size) {
+            void *ptr = split(curr, size + sizeof(header));
+            header *head = (header *) ptr;
 
-    while (curr->next && curr->next != start) { // make one valid loop around the free list
-        free_block *prev = find_prev(curr);
-
-        if (size == curr->size) { // easy case if perfect fit
-            prev->next = curr->next;
-            NEXT = curr->next;
-
-            return curr;
-        } else if (size < curr->size) { // if there is room to fit
-            free_block *head = split(curr, size + sizeof(header));
-
-            remove_free_block(head);
-
-            void *block_ptr = head + sizeof(header);
+            remove_free_block(ptr);
 
             head->size = size;
+            head->magic = 12345;
 
-            return block_ptr;
+            return (void *) head + sizeof(header);
         }
-
-        if (curr->next == NULL) { // loop back around if end reached
-            curr->next = HEAD;
+        if (curr->next == NULL) {
+            curr = HEAD;
+        } else {
+            curr = curr->next;
         }
-
-        curr = curr->next;
     }
 
-    header *head = do_alloc(size + sizeof(header));
-    void *block_ptr = head + sizeof(header);
-
-    head->size = size;
+    void *block_ptr = do_alloc(size);
 
     return block_ptr;
 }
