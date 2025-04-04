@@ -236,11 +236,12 @@ void *tucalloc(size_t num, size_t size) {
  * @return A new pointer containing the contents of ptr, but with the new_size
  */
 void *turealloc(void *ptr, size_t new_size) {
-    tufree(ptr); // put the block back in the free list while keeping data stored there
-    
-    header *head = tumalloc(new_size + sizeof(header));
+    header *head = (header *) (ptr - sizeof(header));
     size_t old_size = head->size;
-    void *block_ptr = ptr;
+
+    tufree(ptr); // put the block back in the free list while keeping data stored there
+
+    void *block_ptr = tumalloc(new_size);
 
     if (new_size <= old_size) { // check to make sure the right amount of data is copied
         memcpy(block_ptr, ptr, new_size);
